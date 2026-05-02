@@ -1,0 +1,44 @@
+# Maintainer: zutyosh <https://git.gay/zutyosh>
+pkgname=cyberia-bin
+pkgver=0.2.3
+pkgrel=1
+pkgdesc='Desktop companion app for Resonite — contacts, messages, sessions (pre-built binary)'
+arch=('x86_64')
+url='https://git.gay/zutyosh/Cyberia'
+license=('MIT')
+provides=('cyberia')
+conflicts=('cyberia')
+depends=(
+    'webkit2gtk-4.1'
+    'gtk3'
+    'libsoup3'
+    'librsvg'
+    'alsa-lib'
+    'openssl'
+    'hicolor-icon-theme'
+)
+optdepends=(
+    'gnome-keyring: secure credential storage via Secret Service'
+    'kwallet: secure credential storage via Secret Service'
+)
+source=(
+    "Cyberia-$pkgver-linux-x86_64.tar.gz::https://git.gay/zutyosh/Cyberia/releases/download/v$pkgver/Cyberia-$pkgver-linux-x86_64.tar.gz"
+    "moe.cyberia.app.metainfo.xml::https://git.gay/zutyosh/Cyberia/raw/tag/v$pkgver/flatpak/moe.cyberia.app.metainfo.xml"
+    "LICENSE::https://git.gay/zutyosh/Cyberia/raw/tag/v$pkgver/LICENSE"
+)
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP')
+
+package() {
+    install -Dm755 "Cyberia-$pkgver/cyberia" \
+        "$pkgdir/usr/bin/cyberia"
+    install -Dm644 "Cyberia-$pkgver/moe.cyberia.app.desktop" \
+        "$pkgdir/usr/share/applications/moe.cyberia.app.desktop"
+    install -Dm644 "Cyberia-$pkgver/moe.cyberia.app.svg" \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/moe.cyberia.app.svg"
+    install -Dm644 moe.cyberia.app.metainfo.xml \
+        "$pkgdir/usr/share/metainfo/moe.cyberia.app.metainfo.xml"
+    install -Dm644 LICENSE \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

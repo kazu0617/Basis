@@ -1,0 +1,26 @@
+pkgbase = cyberia-bin
+	pkgdesc = Desktop companion app for Resonite — contacts, messages, sessions (pre-built binary)
+	pkgver = 0.2.3
+	pkgrel = 1
+	url = https://git.gay/zutyosh/Cyberia
+	arch = x86_64
+	license = MIT
+	provides = cyberia
+	conflicts = cyberia
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libsoup3
+	depends = librsvg
+	depends = alsa-lib
+	depends = openssl
+	depends = hicolor-icon-theme
+	optdepends = gnome-keyring: secure credential storage via Secret Service
+	optdepends = kwallet: secure credential storage via Secret Service
+	source = Cyberia-0.2.3-linux-x86_64.tar.gz::https://git.gay/zutyosh/Cyberia/releases/download/v0.2.3/Cyberia-0.2.3-linux-x86_64.tar.gz
+	source = moe.cyberia.app.metainfo.xml::https://git.gay/zutyosh/Cyberia/raw/tag/v0.2.3/flatpak/moe.cyberia.app.metainfo.xml
+	source = LICENSE::https://git.gay/zutyosh/Cyberia/raw/tag/v0.2.3/LICENSE
+	sha256sums = SKIP
+	sha256sums = SKIP
+	sha256sums = SKIP
+
+pkgname = cyberia-bin

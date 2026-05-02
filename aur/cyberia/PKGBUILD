@@ -1,0 +1,57 @@
+# Maintainer: zutyosh <https://git.gay/zutyosh>
+pkgname=cyberia
+pkgver=0.2.3
+pkgrel=1
+pkgdesc='Desktop companion app for Resonite — contacts, messages, sessions'
+arch=('x86_64')
+url='https://git.gay/zutyosh/Cyberia'
+license=('MIT')
+depends=(
+    'webkit2gtk-4.1'
+    'gtk3'
+    'libsoup3'
+    'librsvg'
+    'alsa-lib'
+    'openssl'
+    'hicolor-icon-theme'
+)
+makedepends=(
+    'rust'
+    'cargo'
+    'nodejs'
+    'npm'
+    'pkg-config'
+)
+optdepends=(
+    'gnome-keyring: secure credential storage via Secret Service'
+    'kwallet: secure credential storage via Secret Service'
+)
+source=("git+https://git.gay/zutyosh/Cyberia.git#tag=v$pkgver")
+sha256sums=('SKIP')
+
+build() {
+    cd Cyberia
+    export CARGO_HOME="$srcdir/cargo-home"
+    npm ci
+    npm run build
+    cd src-tauri
+    cargo build --release
+}
+
+package() {
+    cd Cyberia
+    install -Dm755 src-tauri/target/release/cyberia \
+        "$pkgdir/usr/bin/cyberia"
+    install -Dm644 flatpak/moe.cyberia.app.desktop \
+        "$pkgdir/usr/share/applications/moe.cyberia.app.desktop"
+    install -Dm644 flatpak/moe.cyberia.app.metainfo.xml \
+        "$pkgdir/usr/share/metainfo/moe.cyberia.app.metainfo.xml"
+    install -Dm644 RSN-logo-cyberia.svg \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/moe.cyberia.app.svg"
+    install -Dm644 src-tauri/icons/32x32.png \
+        "$pkgdir/usr/share/icons/hicolor/32x32/apps/moe.cyberia.app.png"
+    install -Dm644 src-tauri/icons/128x128.png \
+        "$pkgdir/usr/share/icons/hicolor/128x128/apps/moe.cyberia.app.png"
+    install -Dm644 LICENSE \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,25 @@
+pkgbase = cyberia
+	pkgdesc = Desktop companion app for Resonite — contacts, messages, sessions
+	pkgver = 0.2.3
+	pkgrel = 1
+	url = https://git.gay/zutyosh/Cyberia
+	arch = x86_64
+	license = MIT
+	makedepends = rust
+	makedepends = cargo
+	makedepends = nodejs
+	makedepends = npm
+	makedepends = pkg-config
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libsoup3
+	depends = librsvg
+	depends = alsa-lib
+	depends = openssl
+	depends = hicolor-icon-theme
+	optdepends = gnome-keyring: secure credential storage via Secret Service
+	optdepends = kwallet: secure credential storage via Secret Service
+	source = git+https://git.gay/zutyosh/Cyberia.git#tag=v0.2.3
+	sha256sums = SKIP
+
+pkgname = cyberia
