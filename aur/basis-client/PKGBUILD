@@ -1,0 +1,229 @@
+# Maintainer: kazu0617 <kazuyagi19990617@gmail.com>
+#
+# basis-client – Basis Social VR Framework の Linux スタンドアローンクライアント
+#
+# ⚠️  このパッケージは Unity 6 (6000.4.4f1) が必要なため、
+#     標準の makepkg chroot 環境ではビルドできません。
+#
+# ■ 事前準備
+#   1. Unity Hub をインストールします:
+#      https://unity.com/download
+#      (AUR: unityhub)
+#   2. Unity Hub から Unity 6000.4.4f1 + Linux Build Support (IL2CPP) をインストールします。
+#      Unity Hub > Installs > Install Editor > 6000.4.4f1
+#      モジュール: "Linux Build Support (IL2CPP)" と "Linux Build Support (Mono)" を追加。
+#   3. Unity ライセンス（Personal / Pro）を Unity Hub でアクティベートします。
+#
+# ■ ビルド方法
+#   makepkg --nosandbox -si
+#
+# ■ Unity のインストールパスをカスタマイズする場合
+#   UNITY_PATH=/path/to/Editor/Unity makepkg --nosandbox -si
+#
+pkgname=basis-client
+pkgver=r0.gabcdef1  # pkgver() で自動更新されます
+pkgrel=1
+pkgdesc="Basis Social VR Framework – standalone VR client (Linux x86_64)"
+arch=('x86_64')
+url="https://github.com/BasisVR/Basis"
+license=('MIT')
+# Unity がビルドに必要（pacman 経由でインストール不可）
+makedepends=('git')
+depends=(
+    'libgl'
+    'libx11'
+    'libxcursor'
+    'libxi'
+    'libxrandr'
+    'libxss'
+    'libudev0'
+)
+optdepends=(
+    'basis-server: ローカルサーバーの起動'
+    'steam: SteamVR / OpenVR を使用する場合'
+)
+provides=('basis-client')
+conflicts=('basis-client')
+
+# Unity バージョン（ProjectSettings/ProjectVersion.txt と一致させること）
+_unity_version="6000.4.4f1"
+
+source=(
+    "Basis::git+https://github.com/BasisVR/Basis.git"
+    "AURBuildScript.cs"
+    "basis-client.desktop"
+)
+sha256sums=(
+    'SKIP'
+    'SKIP'
+    'SKIP'
+)
+
+pkgver() {
+    cd "${srcdir}/Basis"
+    printf "r%s.g%s" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+
+# ---------------------------------------------------------------------------
+# Unity 実行ファイルを探す
+# ---------------------------------------------------------------------------
+_find_unity() {
+    # 1. 環境変数 UNITY_PATH が指定されている場合
+    if [[ -n "${UNITY_PATH}" ]]; then
+        if [[ -x "${UNITY_PATH}" ]]; then
+            echo "${UNITY_PATH}"
+            return 0
+        else
+            warning "UNITY_PATH='${UNITY_PATH}' は実行可能ファイルではありません。自動検索にフォールバックします。"
+        fi
+    fi
+
+    # 2. Unity Hub のデフォルトインストール先（一般的なパス）
+    local _candidates=(
+        "/opt/unity/editors/${_unity_version}/Editor/Unity"
+        "/opt/Unity/editors/${_unity_version}/Editor/Unity"
+        "${HOME}/Unity/Hub/Editor/${_unity_version}/Editor/Unity"
+        "${XDG_DATA_HOME:-${HOME}/.local/share}/unity3d/${_unity_version}/Editor/Unity"
+        "/usr/share/unity3d/Editor/Unity"
+    )
+    local _path
+    for _path in "${_candidates[@]}"; do
+        if [[ -x "${_path}" ]]; then
+            echo "${_path}"
+            return 0
+        fi
+    done
+
+    # 3. find で探す（遅いが最終手段）
+    local _found
+    _found=$(find /opt /home -maxdepth 8 -name "Unity" -path "*/Editor/Unity" \
+        -type f 2>/dev/null \
+        | grep "${_unity_version}" \
+        | head -1)
+    if [[ -n "${_found}" && -x "${_found}" ]]; then
+        echo "${_found}"
+        return 0
+    fi
+
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# build()
+# ---------------------------------------------------------------------------
+build() {
+    local _unity
+    _unity=$(_find_unity) || {
+        error ""
+        error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        error "  Unity ${_unity_version} が見つかりませんでした。"
+        error ""
+        error "  Unity Hub から ${_unity_version} をインストールしてください:"
+        error "    https://unity.com/download"
+        error ""
+        error "  インストール後もこのエラーが出る場合は UNITY_PATH を指定してください:"
+        error "    UNITY_PATH=/path/to/Editor/Unity makepkg --nosandbox -si"
+        error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        return 1
+    }
+    msg2 "Unity 実行ファイル: ${_unity}"
+
+    local _project="${srcdir}/Basis/Basis"
+
+    # -----------------------------------------------------------------
+    # Linux ビルド向けの前処理（CI の compilation.yml と同様）
+    # -----------------------------------------------------------------
+    # OpenXR は Linux スタンドアローンではサポートされないため除去
+    rm -rf "${_project}/Packages/com.basis.openxr"
+    # Meta XR Core SDK も Linux ビルドでは不要
+    rm -rf "${_project}/Packages/com.meta.xr.sdk.core"
+
+    # -----------------------------------------------------------------
+    # AURBuildScript.cs を Assets/Editor/ に注入
+    # （Unity はエディタスクリプトを Assets/Editor/ から読み込む）
+    # -----------------------------------------------------------------
+    install -Dm644 "${srcdir}/AURBuildScript.cs" \
+        "${_project}/Assets/Editor/AURBuildScript.cs"
+
+    local _output="${srcdir}/build/StandaloneLinux64/Basis Unity"
+    local _logfile="${srcdir}/unity-build.log"
+
+    msg2 "Unity バッチモードでビルドを開始します..."
+    msg2 "ログファイル: ${_logfile}"
+    msg2 "（Unity のインポートとビルドに数十分かかる場合があります）"
+
+    BUILD_OUTPUT_PATH="${_output}" \
+    "${_unity}" \
+        -quit \
+        -batchmode \
+        -nographics \
+        -logFile "${_logfile}" \
+        -projectPath "${_project}" \
+        -executeMethod AURBuildScript.BuildLinux64 \
+        -standaloneBuildSubtarget Player
+
+    local _exit=$?
+
+    if [[ ${_exit} -ne 0 ]]; then
+        error "Unity ビルドが失敗しました（終了コード: ${_exit}）"
+        error "詳細は以下のログを確認してください:"
+        error "  ${_logfile}"
+        # エラー行のみを表示
+        if [[ -f "${_logfile}" ]]; then
+            echo "--- Unity ビルドログ（エラー・警告のみ抜粋） ---" >&2
+            grep -E "^(ERROR|FATAL|error CS|Build FAILED)" "${_logfile}" | tail -30 >&2 || true
+        fi
+        return "${_exit}"
+    fi
+
+    msg2 "Unity ビルド成功"
+}
+
+# ---------------------------------------------------------------------------
+# package()
+# ---------------------------------------------------------------------------
+package() {
+    local _builddir="${srcdir}/build/StandaloneLinux64"
+
+    if [[ ! -d "${_builddir}" ]]; then
+        error "ビルド出力が見つかりません: ${_builddir}"
+        return 1
+    fi
+
+    # クライアントファイルを /opt/basis-client に配置
+    install -dm755 "${pkgdir}/opt/basis-client"
+    cp -r "${_builddir}/." "${pkgdir}/opt/basis-client/"
+    chmod -R a+rX,u+w "${pkgdir}/opt/basis-client/"
+
+    # メイン実行ファイルに実行権限（Unity が作成するファイル名を両パターン対応）
+    for _exe_name in "Basis Unity" "Basis Unity.x86_64"; do
+        local _exe="${pkgdir}/opt/basis-client/${_exe_name}"
+        [[ -f "${_exe}" ]] && chmod 755 "${_exe}"
+    done
+
+    # /usr/bin ラッパースクリプト（実行ファイル名を自動判別）
+    install -dm755 "${pkgdir}/usr/bin"
+    install -Dm755 /dev/stdin "${pkgdir}/usr/bin/basis-client" << 'EOF'
+#!/bin/sh
+# Basis VR クライアントのラッパースクリプト
+BASEDIR="/opt/basis-client"
+if [ -x "${BASEDIR}/Basis Unity.x86_64" ]; then
+    exec "${BASEDIR}/Basis Unity.x86_64" "$@"
+elif [ -x "${BASEDIR}/Basis Unity" ]; then
+    exec "${BASEDIR}/Basis Unity" "$@"
+else
+    echo "エラー: Basis Unity の実行ファイルが ${BASEDIR} に見つかりません。" >&2
+    exit 1
+fi
+EOF
+
+    # デスクトップエントリ
+    install -Dm644 "${srcdir}/basis-client.desktop" \
+        "${pkgdir}/usr/share/applications/basis-client.desktop"
+
+    # ライセンス
+    install -Dm644 "${srcdir}/Basis/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

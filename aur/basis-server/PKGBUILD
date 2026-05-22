@@ -1,0 +1,104 @@
+# Maintainer: kazu0617 <kazuyagi19990617@gmail.com>
+#
+# basis-server – Basis Social VR Framework のスタンドアローン・ネットワークサーバー
+#
+# 通常の makepkg/chroot ビルドで使用可能です。
+# dotnet-sdk 10.0+ が必要です（Arch 公式の dotnet-sdk パッケージ、または AUR の dotnet-sdk-bin を使用）。
+#
+pkgname=basis-server
+pkgver=2.10.1.r0.gabcdef1  # pkgver() で自動更新されます
+pkgrel=1
+pkgdesc="Basis Social VR Framework – standalone network server"
+arch=('x86_64' 'aarch64')
+url="https://github.com/BasisVR/Basis"
+license=('MIT')
+depends=()
+makedepends=('git' 'dotnet-sdk>=10.0.100')
+optdepends=('basis-client: Basis VR クライアント')
+provides=('basis-server')
+conflicts=('basis-server')
+install=basis-server.install
+
+source=(
+    "Basis::git+https://github.com/BasisVR/Basis.git"
+    "basis-server.service"
+)
+sha256sums=(
+    'SKIP'
+    'SKIP'
+)
+
+pkgver() {
+    cd "${srcdir}/Basis"
+    # .props ファイルのバージョン番号をベースに git リビジョン情報を付加
+    local _base
+    _base=$(grep -oP '(?<=<Version>)[^<]+' "Basis Server/.props" 2>/dev/null || echo "0")
+    printf "%s.r%s.g%s" \
+        "${_base}" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    # .NET SDK バージョン確認
+    local _dotnet_version
+    _dotnet_version=$(dotnet --version 2>/dev/null) || {
+        error ".NET SDK が見つかりません。'dotnet-sdk' または 'dotnet-sdk-bin' をインストールしてください。"
+        return 1
+    }
+    msg2 ".NET SDK: ${_dotnet_version}"
+
+    local _major
+    _major=$(echo "${_dotnet_version}" | cut -d. -f1)
+    if [[ "${_major}" -lt 10 ]]; then
+        error ".NET SDK 10.0+ が必要ですが ${_dotnet_version} が検出されました。"
+        return 1
+    fi
+
+    cd "${srcdir}/Basis"
+
+    case "${CARCH}" in
+        x86_64)  _runtime="linux-x64"   ;;
+        aarch64) _runtime="linux-arm64" ;;
+        *)
+            error "サポートされていないアーキテクチャ: ${CARCH}"
+            return 1
+            ;;
+    esac
+
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+    export DOTNET_NOLOGO=1
+
+    dotnet publish "Basis Server" \
+        -f net10.0 \
+        --self-contained \
+        --runtime "${_runtime}" \
+        -o "${srcdir}/build" \
+        -c Release
+}
+
+package() {
+    # サーバーファイルを /opt/basis-server に配置
+    install -dm755 "${pkgdir}/opt/basis-server"
+    cp -r "${srcdir}/build/." "${pkgdir}/opt/basis-server/"
+    chmod -R a+rX,u+w "${pkgdir}/opt/basis-server/"
+
+    # メイン実行ファイルに確実に実行権限を付与
+    local _exe="${pkgdir}/opt/basis-server/BasisNetworkConsole"
+    [[ -f "${_exe}" ]] && chmod 755 "${_exe}"
+
+    # /usr/bin ラッパースクリプト
+    install -dm755 "${pkgdir}/usr/bin"
+    install -Dm755 /dev/stdin "${pkgdir}/usr/bin/basis-server" << 'EOF'
+#!/bin/sh
+exec /opt/basis-server/BasisNetworkConsole "$@"
+EOF
+
+    # systemd サービスファイル
+    install -Dm644 "${srcdir}/basis-server.service" \
+        "${pkgdir}/usr/lib/systemd/system/basis-server.service"
+
+    # ライセンス
+    install -Dm644 "${srcdir}/Basis/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Basis
+GenericName=Social VR Client
+Comment=Open-Source Social VR Framework Client
+Exec=/usr/bin/basis-client
+Icon=basis-client
+Terminal=false
+Categories=Game;
+Keywords=VR;Social;Metaverse;OpenXR;
+StartupNotify=true

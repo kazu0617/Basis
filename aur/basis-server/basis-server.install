@@ -1,0 +1,23 @@
+post_install() {
+    # 専用サービスユーザーを作成（存在しない場合のみ）
+    if ! id -u basis &>/dev/null; then
+        useradd --system --shell /sbin/nologin --home-dir /opt/basis-server \
+            --comment "Basis VR Server" basis
+    fi
+
+    systemd-sysusers 2>/dev/null || true
+    echo ">>> basis-server をサービスとして有効化するには:"
+    echo "    sudo systemctl enable --now basis-server"
+    echo ""
+    echo ">>> 専用ユーザー 'basis' でサーバーを起動します。"
+    echo "    設定ファイルは /opt/basis-server/ に配置してください。"
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    systemctl stop basis-server 2>/dev/null || true
+    systemctl disable basis-server 2>/dev/null || true
+}

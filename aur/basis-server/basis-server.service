@@ -1,0 +1,28 @@
+[Unit]
+Description=Basis Social VR Framework – Network Server
+Documentation=https://github.com/BasisVR/Basis
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=basis
+Group=basis
+ExecStart=/opt/basis-server/BasisNetworkConsole
+WorkingDirectory=/opt/basis-server
+Restart=on-failure
+RestartSec=5s
+
+# ハードニング
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/basis-server
+# ログは journald へ
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=basis-server
+
+[Install]
+WantedBy=multi-user.target
