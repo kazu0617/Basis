@@ -223,6 +223,11 @@ EOF
     install -Dm644 "${srcdir}/basis-client.desktop" \
         "${pkgdir}/usr/share/applications/basis-client.desktop"
 
+    # アイコン（リポジトリの Basis/Images/BasisLogo.png を使用）
+    # 461x478 px / RGBA PNG のため pixmaps に配置
+    install -Dm644 "${srcdir}/Basis/Basis/Images/BasisLogo.png" \
+        "${pkgdir}/usr/share/pixmaps/basis-client.png"
+
     # ライセンス
     install -Dm644 "${srcdir}/Basis/LICENSE" \
         "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
